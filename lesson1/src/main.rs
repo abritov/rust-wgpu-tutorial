@@ -12,13 +12,22 @@ async fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    let state = state::State::new(&window).await;
+    let mut state = state::State::new(&window).await;
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
             ref event,
             window_id,
         } if window_id == window.id() => match event {
+            WindowEvent::Moved(_) => {
+                window.request_redraw();
+            }
+            WindowEvent::Resized(physical_size) => {
+                state.resize(*physical_size);
+            }
+            WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
+                state.resize(**new_inner_size);
+            }
             WindowEvent::CloseRequested | WindowEvent::KeyboardInput {
                 input:
                 KeyboardInput {
