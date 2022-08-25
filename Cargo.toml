@@ -1,0 +1,12 @@
+[package]
+name = "rust_wgpu_tutorial"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+members = [
+    "lesson1",
+]
+
+[dependencies]
