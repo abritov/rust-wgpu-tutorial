@@ -227,3 +227,67 @@ WindowEvent::Moved(_) => {
     window.request_redraw();
 }
 ```
+
+## render
+
+Сделаем заливку цветом. Для этого нужно добавить несколько строк в метод `render`.
+```rust
+let output = self.surface.get_current_texture()?;
+```
+Сначала мы получаем `SurfaceTexture` (результат работы строки выше, _фрейм_), чтобы потом отрисовывать туда наш фон.
+
+```rust
+let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+```
+`create_view` возвращает `TextureView`, то, куда будем рендерить.
+
+```rust
+let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+    label: Some("Render Encoder"),
+});
+```
+
+Нам также понадобиться `CommandEncoder`, чтобы подготовить команды, который будет выполнять _GPU_.
+
+Теперь самый большой кусок:
+```rust
+encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+    label: Some("Render Pass"),
+    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+        view: &view,
+        resolve_target: None,
+        ops: wgpu::Operations {
+            load: wgpu::LoadOp::Clear(wgpu::Color {
+                r: 0.1,
+                g: 0.2,
+                b: 0.3,
+                a: 1.0,
+            }),
+            store: true,
+        },
+    })],
+    depth_stencil_attachment: None,
+});
+```
+Подготавливаем `RenderPass`, который содержит в себе методы для рисования.
+В данном примере мы сделаем заливку экрана в синий цвет.
+
+Поле `color_attachments.view` указывает, куда отрисовывать изображение (переменная `view`).
+
+`color_attachments.ops.load` определяем, что делать с изображением из предыдущего кадра. В данном примере мы очищаем экран и делаем заливку синим цветом.
+#
+
+И последние строки в методе `render`:
+```rust
+self.queue.submit(std::iter::once(encoder.finish()));
+output.present();
+
+Ok(())
+```
+Отправляем `RenderPass` на выполнение и отрисовываемым результат на экран.
+
+Здесь все, но нужно еще обработать два новых события в главном цикле:
+![Обработчик RedrawRequested](./lesson1/docs/add-redraw-request-handler.png)
+
+Вот, что должно получиться:
+![Заливка экрана](./lesson1/docs/render-result.png)

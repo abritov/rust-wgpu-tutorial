@@ -15,6 +15,19 @@ async fn main() {
     let mut state = state::State::new(&window).await;
 
     event_loop.run(move |event, _, control_flow| match event {
+        Event::RedrawRequested(window_id) if window_id == window.id() => {
+            match state.render() {
+                Ok(_) => {}
+                Err(wgpu::SurfaceError::Lost) => state.resize(state.size),
+                Err(wgpu::SurfaceError::OutOfMemory) => *control_flow = ControlFlow::Exit,
+                // Все остальные ошибки будут обработаны в следующем кадре
+                Err(e) => eprintln!("{:?}", e),
+            }
+        }
+        Event::MainEventsCleared => {
+            // Вызываем перерисовку окна, когда очередь событий event loop пуста
+            window.request_redraw();
+        }
         Event::WindowEvent {
             ref event,
             window_id,
