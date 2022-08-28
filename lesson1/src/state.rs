@@ -2,11 +2,14 @@ use winit::window::Window;
 use winit::{
     event::*,
 };
+use std::ops::Div;
 
 pub struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
     queue: wgpu::Queue,
+    mouse_x: Option<f64>,
+    mouse_y: Option<f64>,
     config: wgpu::SurfaceConfiguration,
     pub(crate) size: winit::dpi::PhysicalSize<u32>,
 }
@@ -49,6 +52,8 @@ impl State {
             surface,
             device,
             queue,
+            mouse_x: None,
+            mouse_y: None,
             config,
             size
         }
@@ -64,7 +69,14 @@ impl State {
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
-        todo!()
+        match event {
+            WindowEvent::CursorMoved { position, .. } => {
+                self.mouse_x = Some(position.x.div(self.size.width as f64).clamp(0.0, 1.0));
+                self.mouse_y = Some(position.y.div(self.size.height as f64).clamp(0.0, 1.0));
+            },
+            _ => {}
+        }
+        false
     }
 
     pub fn update(&mut self) {
@@ -85,9 +97,9 @@ impl State {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.1,
+                        r: self.mouse_y.unwrap_or(0.1),
                         g: 0.2,
-                        b: 0.3,
+                        b: self.mouse_x.unwrap_or(0.3),
                         a: 1.0,
                     }),
                     store: true,
