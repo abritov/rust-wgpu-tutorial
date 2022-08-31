@@ -13,6 +13,8 @@ pub struct State {
     config: wgpu::SurfaceConfiguration,
     pub(crate) size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: wgpu::RenderPipeline,
+    color_pipeline: wgpu::RenderPipeline,
+    use_color: bool
 }
 
 impl State {
@@ -93,6 +95,42 @@ impl State {
             multiview: None,
         });
 
+        let colored_shader = device.create_shader_module(wgpu::include_wgsl!("color-shader.wgsl"));
+        let color_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Render Pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &colored_shader,
+                entry_point: "vs_main",
+                buffers: &[],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &colored_shader,
+                entry_point: "fs_main",
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        });
+
         Self {
             surface,
             device,
@@ -101,7 +139,9 @@ impl State {
             mouse_y: None,
             config,
             size,
-            render_pipeline
+            render_pipeline,
+            color_pipeline,
+            use_color: false
         }
     }
 
@@ -120,6 +160,16 @@ impl State {
                 self.mouse_x = Some(position.x.div(self.size.width as f64).clamp(0.0, 1.0));
                 self.mouse_y = Some(position.y.div(self.size.height as f64).clamp(0.0, 1.0));
             },
+            WindowEvent::KeyboardInput {
+                input: KeyboardInput {
+                    state: ElementState::Pressed,
+                    virtual_keycode: Some(VirtualKeyCode::Space),
+                    ..
+                },
+                ..
+            } => {
+                self.use_color = !self.use_color;
+            }
             _ => {}
         }
         false
@@ -155,8 +205,11 @@ impl State {
                 depth_stencil_attachment: None,
             });
 
-            // NEW!
-            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_pipeline(if self.use_color {
+                &self.color_pipeline
+            } else {
+                &self.render_pipeline
+            });
             // in_vertex_index задается здесь
             // шейдер вызывается для каждого из значений от 0 до 2 включительно
             render_pass.draw(0..3, 0..1);
