@@ -241,7 +241,80 @@ const INDICES: &[u16] = &[
 В таком сценарии `VERTICES` будет занимать всего 120 байт, а `INDICES` 18 байт + 2 на выравнивание.
 Мы сэкономили 76 байт! Это кажется мало, но для больших фигур разница будет больше.
 
+Нужно внести несколько правок, прежде чем использовать индексный буфер.
+```rust
+struct State {
+    surface: wgpu::Surface,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+    config: wgpu::SurfaceConfiguration,
+    size: winit::dpi::PhysicalSize<u32>,
+    render_pipeline: wgpu::RenderPipeline,
+    vertex_buffer: wgpu::Buffer,
+    // NEW!
+    index_buffer: wgpu::Buffer, // положим индексный буфер сюда
+    num_indices: u32,
+}
+```
+Начнем с создания нового буфера для индексов в методе `State::new`:
+```rust
+let index_buffer = device.create_buffer_init(
+    &wgpu::util::BufferInitDescriptor {
+        label: Some("Index Buffer"),
+        contents: bytemuck::cast_slice(INDICES),
+        usage: wgpu::BufferUsages::INDEX,
+    }
+);
+let num_indices = INDICES.len() as u32;
+```
+Еще я добавил переменную `num_indices`, которая также будет находиться в `State`:
+```rust
+Self {
+    surface,
+    device,
+    queue,
+    config,
+    size,
+    render_pipeline,
+    vertex_buffer,
+    // NEW!
+    index_buffer,
+    num_indices,
+}
+```
 
+#
+
+Теперь обновим метод `State::render`:
+```rust
+// render()
+render_pass.set_pipeline(&self.render_pipeline);
+render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16); // 1
+render_pass.draw_indexed(0..self.num_indices, 0, 0..1);                               // 2
+```
+
+Несколько вещей, которые нужно отметить:
+1. Единовременно вы можете использовать только один индексный буфер, о чем говорит название метода `set_index_buffer`
+2. Когда вы используете индексный буфер, для отрисовки нужно вызывать `draw_indexed`. Также не забудьте, что `self.num_indices` равно количеству элементов в индексном буфере, но не количеству вершин. Ошибки в этом параметре приведут к неправильной отрисовке или экстренному завершению процесса.
+3. Код шейдера не требуется менять для поддержки индексного буфера
+
+#
+
+Вот, что получилось:
+![Результат отрисовки с индексным буфером](../docs/index-buffer.png)
+
+
+## Цветовая коррекция
+
+Если вы проверите цвет пентагона, то получите значение #BC00BC. 
+Сконвертировав значение в RGB получаем (188, 0, 188). 
+Разделив значения на 255, чтобы получить цвет в промежутке `[0, 1]`, получим значение (0.737254902, 0, 0.737254902), вместо указанного (0.5, 0.0, 0.5).
+
+Мы можем вычислить аппроксимацию значения цвета по формуле `srgb_color = (rgb_color / 255) ^ 2.2`.
+Для цвета (188, 0, 188) мы получим значение (0.511397819, 0.0, 0.511397819), что уже гораздо ближе к исходному.
+
+Кроме этого, можно использовать текстуры, тк в них цвета уже в нужном формате.
 
 
 [Ссылка](https://sotrh.github.io/learn-wgpu/beginner/tutorial4-buffer/#we-re-finally-talking-about-them) на оригинал
