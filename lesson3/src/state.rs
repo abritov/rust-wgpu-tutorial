@@ -48,6 +48,53 @@ const INDICES: &[u16] = &[
     2, 3, 4,
 ];
 
+const CUBE_VERTICES: &[Vertex] = &[
+    // Front face
+    Vertex { position: [-1.0, -1.0,  1.0], color: [1.0, 0.0, 0.0] },
+    Vertex { position: [1.0, -1.0,  1.0], color: [0.0, 1.0, 0.0] },
+    Vertex { position: [1.0,  1.0,  1.0], color: [0.0, 0.0, 1.0] },
+    Vertex { position: [-1.0,  1.0,  1.0], color: [1.0, 0.0, 0.0] },
+
+    // Back face
+    Vertex { position: [-1.0, -1.0, -1.0], color: [1.0, 0.0, 0.0] },
+    Vertex { position: [-1.0,  1.0, -1.0], color: [0.0, 1.0, 0.0] },
+    Vertex { position: [1.0,  1.0, -1.0], color: [0.0, 0.0, 1.0] },
+    Vertex { position: [1.0, -1.0, -1.0], color: [1.0, 0.0, 0.0] },
+
+    // Top face
+    Vertex { position: [-1.0,  1.0, -1.0], color: [1.0, 0.0, 0.0] },
+    Vertex { position: [-1.0,  1.0,  1.0], color: [0.0, 1.0, 0.0] },
+    Vertex { position: [1.0,  1.0,  1.0], color: [0.0, 0.0, 1.0] },
+    Vertex { position: [1.0,  1.0, -1.0], color: [1.0, 0.0, 0.0] },
+
+    // Bottom face
+    Vertex { position: [-1.0, -1.0, -1.0], color: [1.0, 0.0, 0.0] },
+    Vertex { position: [1.0, -1.0, -1.0], color: [0.0, 1.0, 0.0] },
+    Vertex { position: [1.0, -1.0,  1.0], color: [0.0, 0.0, 1.0] },
+    Vertex { position: [-1.0, -1.0,  1.0], color: [1.0, 0.0, 0.0] },
+
+    // Right face
+    Vertex { position: [1.0, -1.0, -1.0], color: [1.0, 0.0, 0.0] },
+    Vertex { position: [1.0,  1.0, -1.0], color: [0.0, 1.0, 0.0] },
+    Vertex { position: [1.0,  1.0,  1.0], color: [0.0, 0.0, 1.0] },
+    Vertex { position: [1.0, -1.0,  1.0], color: [1.0, 0.0, 0.0] },
+
+    // Left face
+    Vertex { position: [-1.0, -1.0, -1.0], color: [1.0, 0.0, 0.0] },
+    Vertex { position: [-1.0, -1.0,  1.0], color: [0.0, 1.0, 0.0] },
+    Vertex { position: [-1.0,  1.0,  1.0], color: [0.0, 0.0, 1.0] },
+    Vertex { position: [-1.0,  1.0, -1.0], color: [1.0, 0.0, 0.0] },
+];
+
+const CUBE_INDICES: &[u16] = &[
+    0,  1,  2,      0,  2,  3,    // front
+    4,  5,  6,      4,  6,  7,    // back
+    8,  9,  10,     8,  10, 11,   // top
+    12, 13, 14,     12, 14, 15,   // bottom
+    16, 17, 18,     16, 18, 19,   // right
+    20, 21, 22,     20, 22, 23,   // left
+];
+
 pub struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -61,6 +108,7 @@ pub struct State {
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
     num_indices: u32,
+    render_cube: bool,
 }
 
 impl State {
@@ -170,7 +218,8 @@ impl State {
             render_pipeline,
             vertex_buffer,
             index_buffer,
-            num_indices
+            num_indices,
+            render_cube: false
         }
     }
 
@@ -189,6 +238,50 @@ impl State {
                 self.mouse_x = Some(position.x.div(self.size.width as f64).clamp(0.0, 1.0));
                 self.mouse_y = Some(position.y.div(self.size.height as f64).clamp(0.0, 1.0));
             },
+            WindowEvent::KeyboardInput {
+                input: KeyboardInput {
+                    state: ElementState::Pressed,
+                    virtual_keycode: Some(VirtualKeyCode::Space),
+                    ..
+                },
+                ..
+            } => {
+                self.render_cube = !self.render_cube;
+                let vertices = if self.render_cube {
+                    self.index_buffer = self.device.create_buffer_init(
+                        &wgpu::util::BufferInitDescriptor {
+                            label: Some("Index Buffer"),
+                            contents: bytemuck::cast_slice(CUBE_INDICES),
+                            usage: wgpu::BufferUsages::INDEX,
+                        }
+                    );
+                    self.num_indices = CUBE_INDICES.len() as u32;
+                    CUBE_VERTICES
+                        .into_iter()
+                        .map(|v| Vertex {
+                            position: [v.position[0] / 2.0, v.position[1] / 2.0, v.position[2] / 2.0],
+                            ..*v
+                        })
+                        .collect::<Vec<Vertex>>()
+                } else {
+                    self.index_buffer = self.device.create_buffer_init(
+                        &wgpu::util::BufferInitDescriptor {
+                            label: Some("Index Buffer"),
+                            contents: bytemuck::cast_slice(INDICES),
+                            usage: wgpu::BufferUsages::INDEX,
+                        }
+                    );
+                    self.num_indices = INDICES.len() as u32;
+                    VERTICES.to_vec()
+                };
+                self.vertex_buffer = self.device.create_buffer_init(
+                    &wgpu::util::BufferInitDescriptor {
+                        label: Some("Vertex Buffer"),
+                        contents: bytemuck::cast_slice(&vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    }
+                );
+            }
             _ => {}
         }
         false

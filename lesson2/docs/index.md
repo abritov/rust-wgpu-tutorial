@@ -263,4 +263,5 @@ Self {
 Добавьте второй пайплайн, который будет вычислять цвет во фрагментном шейдере исходя из позиции в вершинном шейдере (`VertexOutput`).
 Сделайте переключение между пайплайнами по нажатии на кнопку space.
 
-[Ссылка на оригинал](https://sotrh.github.io/learn-wgpu/beginner/tutorial3-pipeline/#what-s-a-pipeline)
+[Ссылка на оригинал](https://sotrh.github.io/learn-wgpu/beginner/tutorial3-pipeline/#what-s-a-pipeline)  
+Ссылка на [следующий](../../lesson3/docs/index.md) урок
