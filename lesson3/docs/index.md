@@ -322,4 +322,6 @@ render_pass.draw_indexed(0..self.num_indices, 0, 0..1);                         
 Нарисуйте более сложную фигуру, с большим количеством треугольников, используя вершинный и индексный буфер.
 Сделайте смену фигур по кнопке space.
 
-[Ссылка](https://sotrh.github.io/learn-wgpu/beginner/tutorial4-buffer/#we-re-finally-talking-about-them) на оригинал
+[Следующий урок](../../lesson4/docs/index.md)
+
+[Ссылка на оригинал](https://sotrh.github.io/learn-wgpu/beginner/tutorial4-buffer/#we-re-finally-talking-about-them)
