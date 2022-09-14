@@ -64,7 +64,10 @@ pub struct State {
     num_indices: u32,
     // NEW!
     diffuse_bind_group: wgpu::BindGroup,
-    diffuse_texture: Texture,
+    tree: Texture,
+    tree_cartoon_bind_group: wgpu::BindGroup,
+    tree_cartoon: Texture,
+    space_pressed: bool,
 }
 
 impl State {
@@ -101,10 +104,6 @@ impl State {
         };
         surface.configure(&device, &config);
 
-        // Создаем текстуру
-        let diffuse_bytes = include_bytes!("../assets/tree.png");
-        let diffuse_texture = Texture::from_bytes(&device, &queue, diffuse_bytes, "tree.png").unwrap();
-
         let texture_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
@@ -128,17 +127,49 @@ impl State {
                 ],
                 label: Some("texture_bind_group_layout"),
             });
+
+        // Создаем текстуры
+        let tree = Texture::from_bytes(
+            &device,
+            &queue,
+            include_bytes!("../assets/tree.png"),
+            "tree.png"
+        ).unwrap();
+        let tree_cartoon = Texture::from_bytes(
+            &device,
+            &queue,
+            include_bytes!("../assets/tree-cartoon.png"),
+            "tree-cartoon.png"
+        ).unwrap();
+
         let diffuse_bind_group = device.create_bind_group(
             &wgpu::BindGroupDescriptor {
                 layout: &texture_bind_group_layout,
                 entries: &[
                     wgpu::BindGroupEntry {
                         binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                        resource: wgpu::BindingResource::TextureView(&tree.view),
                     },
                     wgpu::BindGroupEntry {
                         binding: 1,
-                        resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                        resource: wgpu::BindingResource::Sampler(&tree.sampler),
+                    }
+                ],
+                label: Some("diffuse_bind_group"),
+            }
+        );
+
+        let tree_cartoon_bind_group = device.create_bind_group(
+            &wgpu::BindGroupDescriptor {
+                layout: &texture_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&tree_cartoon.view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&tree_cartoon.sampler),
                     }
                 ],
                 label: Some("diffuse_bind_group"),
@@ -221,7 +252,10 @@ impl State {
             index_buffer,
             num_indices,
             diffuse_bind_group,
-            diffuse_texture
+            tree,
+            tree_cartoon_bind_group,
+            tree_cartoon,
+            space_pressed: false
         }
     }
 
@@ -239,6 +273,16 @@ impl State {
             WindowEvent::CursorMoved { position, .. } => {
                 self.mouse_x = Some(position.x.div(self.size.width as f64).clamp(0.0, 1.0));
                 self.mouse_y = Some(position.y.div(self.size.height as f64).clamp(0.0, 1.0));
+            },
+            WindowEvent::KeyboardInput {
+                input: KeyboardInput {
+                    state: ElementState::Pressed,
+                    virtual_keycode: Some(VirtualKeyCode::Space),
+                    ..
+                },
+                ..
+            } => {
+                self.space_pressed = !self.space_pressed;
             },
             _ => {}
         }
@@ -276,7 +320,12 @@ impl State {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]); // NEW!
+            // NEW!
+            if self.space_pressed {
+                render_pass.set_bind_group(0, &self.tree_cartoon_bind_group, &[]);
+            } else {
+                render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+            }
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
             render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             render_pass.draw_indexed(0..self.num_indices, 0, 0..1);

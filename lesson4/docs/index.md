@@ -387,4 +387,8 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
 ![](../docs/result.png)
 
+### Домашнее задание
+
+Добавьте возможность менять текстуру по нажатию на кнопку space
+
 [Ссылка на оригинал](https://sotrh.github.io/learn-wgpu/beginner/tutorial5-textures/#loading-an-image-from-a-file)
