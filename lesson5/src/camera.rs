@@ -26,6 +26,26 @@ impl Camera {
     }
 }
 
+pub(crate) struct CameraStaging {
+    pub(crate) camera: Camera,
+    pub(crate) model_rotation: cgmath::Deg<f32>,
+}
+
+impl CameraStaging {
+    pub(crate) fn new(camera: Camera) -> Self {
+        Self {
+            camera,
+            model_rotation: cgmath::Deg(0.0),
+        }
+    }
+    pub(crate) fn update_camera(&self, camera_uniform: &mut CameraUniform) {
+        camera_uniform.view_proj = (OPENGL_TO_WGPU_MATRIX
+            * self.camera.build_view_projection_matrix()
+            * cgmath::Matrix4::from_angle_y(self.model_rotation))
+            .into();
+    }
+}
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CameraUniform {

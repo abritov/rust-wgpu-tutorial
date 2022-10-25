@@ -7,7 +7,7 @@ use wgpu::util::DeviceExt;
 use std::ops::Div;
 
 use crate::texture::Texture;
-use crate::camera::{Camera, CameraUniform, CameraController};
+use crate::camera::{Camera, CameraUniform, CameraController, CameraStaging};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -66,8 +66,8 @@ pub struct State {
     diffuse_bind_group: wgpu::BindGroup,
     diffuse_texture: Texture,
     // NEW!
-    camera: Camera,
     camera_uniform: CameraUniform,
+    camera_staging: CameraStaging,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     camera_controller: CameraController,
@@ -162,7 +162,8 @@ impl State {
             zfar: 100.0,
         };
         let mut camera_uniform = CameraUniform::new();
-        camera_uniform.update_view_proj(&camera);
+        let camera_staging = CameraStaging::new(camera);
+        camera_staging.update_camera(&mut camera_uniform);
 
         let camera_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
@@ -280,8 +281,8 @@ impl State {
             num_indices,
             diffuse_bind_group,
             diffuse_texture,
-            camera,
             camera_uniform,
+            camera_staging,
             camera_buffer,
             camera_bind_group,
             camera_controller
@@ -310,9 +311,14 @@ impl State {
     }
 
     pub fn update(&mut self) {
-        self.camera_controller.update_camera(&mut self.camera);
-        self.camera_uniform.update_view_proj(&self.camera);
-        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));
+        self.camera_controller.update_camera(&mut self.camera_staging.camera);
+        self.camera_staging.model_rotation += cgmath::Deg(2.0);
+        self.camera_staging.update_camera(&mut self.camera_uniform);
+        self.queue.write_buffer(
+            &self.camera_buffer,
+            0,
+            bytemuck::cast_slice(&[self.camera_uniform]),
+        );
     }
 
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
