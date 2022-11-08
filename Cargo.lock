@@ -834,6 +834,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "lesson6"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "cgmath",
+ "env_logger",
+ "image",
+ "log",
+ "tokio",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.132"
 source = "registry+https://github.com/rust-lang/crates.io-index"
