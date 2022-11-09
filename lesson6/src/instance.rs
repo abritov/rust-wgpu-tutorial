@@ -2,7 +2,7 @@
 
 pub struct Instance {
     position: cgmath::Vector3<f32>,
-    rotation: cgmath::Quaternion<f32>,
+    pub(crate) rotation: cgmath::Quaternion<f32>,
 }
 
 impl Instance {
